@@ -59,7 +59,7 @@ client.on("clientReady", async () => {
     const row = new ActionRowBuilder().addComponents(menu);
 
     await channel.send({
-        content: " # 🎮 **Choisis un jeu pour voir le serveur privé ||@everyone||: **",
+        content: " # 🎮 **Choisis un jeu pour voir le serveur privé : ||@everyone||**",
         components: [row]
     });
 });
