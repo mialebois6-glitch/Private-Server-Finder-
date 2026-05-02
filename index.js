@@ -59,7 +59,7 @@ client.on("clientReady", async () => {
     const row = new ActionRowBuilder().addComponents(menu);
 
     await channel.send({
-        content: "🎮 **Choisis un jeu pour voir le serveur privé :**",
+        content: " # 🎮 **Choisis un jeu pour voir le serveur privé ||@everyone||: **",
         components: [row]
     });
 });
@@ -82,7 +82,7 @@ client.on("interactionCreate", async (interaction) => {
                 .setColor(status.color)
                 .addFields(
                     { name: "📡 Statut", value: status.text },
-                    { name: "👥 Joueurs", value: "❌ Non détectable (serveur privé)" },
+                    { name: "👥 Joueurs", value: "❌ Non détectable" },
                     { name: "🔗 Serveur", value: "Clique sur le bouton ci-dessous" }
                 )
                 .setFooter({ text: "Private Server Finder 🚀" });
@@ -122,7 +122,7 @@ client.on("interactionCreate", async (interaction) => {
                 .setColor(status.color)
                 .addFields(
                     { name: "📡 Statut", value: status.text },
-                    { name: "👥 Joueurs", value: "❌ Non détectable (serveur privé)" },
+                    { name: "👥 Joueurs", value: "❌ Non détectable" },
                     { name: "🔗 Serveur", value: "Clique sur le bouton ci-dessous" }
                 )
                 .setFooter({ text: "Private Server Finder 🚀" });
