@@ -99,7 +99,6 @@ client.on("interactionCreate", async (interaction) => {
 
         let msg =
             `🎮 **${game.name}**\n\n` +
-            `👥 Joueurs (public) : ${playerCount}\n\n` +
             `🔒 Serveur privé actuel :\n👉 ${currentServer}\n\n` +
             `🔄 Rotation auto active`;
 
