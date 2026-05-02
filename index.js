@@ -1,8 +1,16 @@
 const { Client, GatewayIntentBits, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
-const fetch = require('node-fetch');
+
+// ⚠️ fetch compatible Railway / Node 18+
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+
+console.log("🚀 START BOT FILE");
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ]
 });
 
 const PREFIX = "!";
@@ -13,7 +21,7 @@ const games = {
         name: "Blox Fruits",
         placeId: 2753915549,
         servers: [
-            "https://www.roblox.com/share?code=1677647989b4074b9d408089df65c7cf&type=Server",
+          "https://www.roblox.com/share?code=1677647989b4074b9d408089df65c7cf&type=Server",
             "https://www.roblox.com/share?code=04b19bd32cdaad46bde302f2a4d6f6d5&type=Server",
             "https://www.roblox.com/share?code=3fdc87c0150e674d93434efc2d3c5587&type=Server",
             "https://www.roblox.com/share?code=616d61bfdb341d428e4889a3165489c0&type=Server",
@@ -30,7 +38,7 @@ const games = {
         name: "Pets Simulator 99",
         placeId: 8737899170,
         servers: [
-            "https://www.roblox.com/share?code=b9e4b4ab862c0b4b884a03b09c12ef06&type=Server",
+          "https://www.roblox.com/share?code=b9e4b4ab862c0b4b884a03b09c12ef06&type=Server",
             "https://www.roblox.com/share?code=339fd68b0e2f884798becd145d45a4df&type=Server",
             "https://www.roblox.com/share?code=be1781b740b9974d99dc8421540d2679&type=Server",
             "https://www.roblox.com/share?code=6a8345161f66fc4a8d14ead55b01ed21&type=Server",
@@ -45,38 +53,34 @@ const games = {
     }
 };
 
-
-// 🔄 Rotation automatique toutes les 60 secondes
+// 🔄 rotation auto
 setInterval(() => {
     for (let game in games) {
         let g = games[game];
         g.currentIndex = (g.currentIndex + 1) % g.servers.length;
     }
-    console.log("🔄 Rotation des serveurs effectuée");
+    console.log("🔄 Rotation serveurs OK");
 }, 60000);
 
-
-// 👥 Récupérer nombre de joueurs (serveurs publics)
+// 👥 joueurs Roblox
 async function getPlayerCount(placeId) {
     try {
         const res = await fetch(`https://games.roblox.com/v1/games/${placeId}/servers/Public?limit=10`);
         const data = await res.json();
 
-        let totalPlayers = 0;
+        if (!data || !data.data) return "Inconnu";
 
-        data.data.forEach(server => {
-            totalPlayers += server.playing;
-        });
+        let total = 0;
+        data.data.forEach(s => total += s.playing);
 
-        return totalPlayers;
+        return total;
     } catch (err) {
-        console.log(err);
+        console.log("Erreur API Roblox:", err);
         return "Inconnu";
     }
 }
 
-
-// 🎮 Commande
+// 🎮 commande
 client.on("messageCreate", async (message) => {
     if (message.author.bot) return;
 
@@ -94,34 +98,40 @@ client.on("messageCreate", async (message) => {
 
         const row = new ActionRowBuilder().addComponents(menu);
 
-        await message.reply({
+        message.reply({
             content: "🎮 Choisis un jeu :",
             components: [row]
         });
     }
 });
 
-
-// 📌 Interaction menu
+// 📌 interaction menu
 client.on("interactionCreate", async (interaction) => {
     if (!interaction.isStringSelectMenu()) return;
 
     if (interaction.customId === "select_game") {
-        const gameKey = interaction.values[0];
-        const game = games[gameKey];
+        const game = games[interaction.values[0]];
 
         const playerCount = await getPlayerCount(game.placeId);
-
         const currentServer = game.servers[game.currentIndex];
 
-        let msg = `🎮 **${game.name}**\n\n`;
-        msg += `👥 Joueurs (public) : ${playerCount}\n\n`;
-        msg += `🔒 Serveur privé actuel :\n👉 ${currentServer}\n\n`;
-        msg += `🔄 Rotation auto active`;
+        let msg =
+            `🎮 **${game.name}**\n\n` +
+            `👥 Joueurs (public) : ${playerCount}\n\n` +
+            `🔒 Serveur privé actuel :\n👉 ${currentServer}\n\n` +
+            `🔄 Rotation auto active`;
 
-        await interaction.reply(msg);
+        interaction.reply({ content: msg });
     }
 });
 
+// ✅ READY EVENT (IMPORTANT DEBUG)
+client.once("ready", () => {
+    console.log(`✅ CONNECTÉ EN TANT QUE ${client.user.tag}`);
+});
 
+// 🚨 LOGIN (IMPORTANT)
+console.log("🔑 Connexion Discord...");
+
+// 👉 RAILWAY: TOKEN doit exister dans Variables
 client.login(process.env.TOKEN);
