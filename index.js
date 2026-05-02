@@ -62,24 +62,6 @@ setInterval(() => {
     console.log("🔄 Rotation serveurs OK");
 }, 60000);
 
-// 👥 joueurs Roblox
-async function getPlayerCount(placeId) {
-    try {
-        const res = await fetch(`https://games.roblox.com/v1/games/${placeId}/servers/Public?limit=10`);
-        const data = await res.json();
-
-        if (!data || !data.data) return "Inconnu";
-
-        let total = 0;
-        data.data.forEach(s => total += s.playing);
-
-        return total;
-    } catch (err) {
-        console.log("Erreur API Roblox:", err);
-        return "Inconnu";
-    }
-}
-
 // 🎮 commande
 client.on("messageCreate", async (message) => {
     if (message.author.bot) return;
