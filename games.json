@@ -83,6 +83,36 @@
       "https://www.roblox.com/share?code=510031d50b2cf14092ba29819c340c99&type=Server",
       "https://www.roblox.com/share?code=05f5b9fb8f37cb4aaabda7bee7404013&type=Server"
      ]  
-  }
+  },
+  "simulateurderuche": {
+    "name": "Simulateur de Ruche",
+    "servers": [
+      "https://www.roblox.com/share?code=1d3f85b427ee494798b179c03f393250&type=Server",
+      "https://www.roblox.com/share?code=2a59a6a0a831c74683e9407f47fab0eb&type=Server",
+      "https://www.roblox.com/share?code=2649db0ec60fd042acbb16dcfff6b27a&type=Server",
+      "https://www.roblox.com/share?code=ef34234e3ed3f54a84875137b2cab424&type=Server",
+      "https://www.roblox.com/share?code=cea575b22fb6d344b56e160fa4ff5b92&type=Server"
+      ]
+  },
+  "êtreunblocchanceux": {
+    "name": "Être un bloc chanceux",
+    "servers": [
+      "https://www.roblox.com/share?code=99829985ca17a745b3633929b546d020&type=Server",
+      "https://www.roblox.com/share?code=23ad52a3083d984d8cd0c7bf1de291a2&type=Server",
+      "https://www.roblox.com/share?code=4ebe9184d8512441877e0a162ea46c76&type=Server",
+      "https://www.roblox.com/share?code=e561e143911777469a65dd8626c4b246&type=Server",
+      "https://www.roblox.com/share?code=e9e8e980af6a7c4ab7168e011d6106d6&type=Server"
+      ]
+   },
+   "monrestaurant": {
+     "name": "👨‍🍳✨ Mon Restaurant!",
+     "servers": [
+       "https://www.roblox.com/share?code=1972ec2c54b38843991c03bc263203ea&type=Server",
+       "https://www.roblox.com/share?code=c04c26dca4d07a4e956e464c0ad91836&type=Server",
+       "https://www.roblox.com/share?code=c3a5854cb09f304dbffd98ebc3241fe1&type=Server",
+       "https://www.roblox.com/share?code=cbacabbeb5266e4aaa59d59fec9193e7&type=Server",
+       "https://www.roblox.com/share?code=e9e6be17ecbaec459f644989d4e271e5&type=Server"
+       ]
+    }
 }
     
