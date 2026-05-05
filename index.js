@@ -16,7 +16,7 @@ const client = new Client({
 
 // 📂 DATA
 const games = require("./games.json");
-const CHANNEL_ID = "1500023726089965628";
+const CHANNEL_ID = "1501253385888727040";
 
 // =======================
 // ⚙️ CONFIG
