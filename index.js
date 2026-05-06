@@ -3,9 +3,9 @@ const {
     GatewayIntentBits,
     ActionRowBuilder,
     StringSelectMenuBuilder,
+    EmbedBuilder,
     ButtonBuilder,
-    ButtonStyle,
-    EmbedBuilder
+    ButtonStyle
 } = require("discord.js");
 
 const fs = require("fs");
@@ -25,16 +25,6 @@ const CHANNEL_ID = "1501253385888727040";
 const LEADERBOARD_CHANNEL_ID = "1501455908847222886";
 const LOG_CHANNEL_ID = "1501255907089322246";
 const BOOSTER_ROLE_ID = "1501255314475974807";
-
-// XP
-const XP_PER_MESSAGE = 10;
-const XP_COOLDOWN = 10000;
-
-const LEVEL_ROLES = {
-    5: "ROLE_ID_LEVEL_5",
-    10: "ROLE_ID_LEVEL_10",
-    20: "ROLE_ID_LEVEL_20"
-};
 
 // ================= DATA =================
 
@@ -56,6 +46,15 @@ try { dashboardMessageId = JSON.parse(fs.readFileSync("./dashboard.json")).id; }
 const saveXP = () => fs.writeFileSync("./xp.json", JSON.stringify(xpData, null, 2));
 const saveLeaderboard = () => fs.writeFileSync("./leaderboard.json", JSON.stringify({ id: leaderboardMessageId }));
 const saveDashboard = () => fs.writeFileSync("./dashboard.json", JSON.stringify({ id: dashboardMessageId }));
+
+// ================= LOG =================
+
+async function log(message) {
+    try {
+        const ch = await client.channels.fetch(LOG_CHANNEL_ID);
+        ch.send({ content: message });
+    } catch {}
+}
 
 // ================= XP =================
 
@@ -92,33 +91,19 @@ async function sendDashboard() {
             }))
         );
 
-    const buttons = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setCustomId("refresh_ui")
-            .setLabel("Refresh")
-            .setEmoji("🔄")
-            .setStyle(ButtonStyle.Secondary),
-
-        new ButtonBuilder()
-            .setCustomId("stats_ui")
-            .setLabel("Stats")
-            .setEmoji("📊")
-            .setStyle(ButtonStyle.Primary)
-    );
-
     const row = new ActionRowBuilder().addComponents(menu);
 
     try {
         if (dashboardMessageId) {
             const msg = await channel.messages.fetch(dashboardMessageId);
-            await msg.edit({ embeds: [embed], components: [row, buttons] });
+            await msg.edit({ embeds: [embed], components: [row] });
         } else {
-            const msg = await channel.send({ embeds: [embed], components: [row, buttons] });
+            const msg = await channel.send({ embeds: [embed], components: [row] });
             dashboardMessageId = msg.id;
             saveDashboard();
         }
     } catch {
-        const msg = await channel.send({ embeds: [embed], components: [row, buttons] });
+        const msg = await channel.send({ embeds: [embed], components: [row] });
         dashboardMessageId = msg.id;
         saveDashboard();
     }
@@ -135,8 +120,18 @@ client.on("clientReady", async () => {
 
 client.on("interactionCreate", async (i) => {
 
+    // 🔒 Vérif booster
+    if (!i.member.roles.cache.has(BOOSTER_ROLE_ID)) {
+        return i.reply({
+            content: "❌ Accès réservé aux boosters",
+            ephemeral: true
+        });
+    }
+
     if (i.isStringSelectMenu() && i.customId === "select_game") {
         const game = games[i.values[0]];
+
+        log(`🎮 ${i.user.tag} a sélectionné ${game.name}`);
 
         return i.reply({
             embeds: [
@@ -157,29 +152,12 @@ client.on("interactionCreate", async (i) => {
         });
     }
 
-    if (i.isButton() && i.customId === "refresh_ui") {
-        await sendDashboard();
-        return i.reply({ content: "✅ Refresh fait", ephemeral: true });
-    }
-
-    if (i.isButton() && i.customId === "stats_ui") {
-        const total = Object.values(monthly)
-            .reduce((a, b) => a + b.boosts, 0);
-
-        return i.reply({
-            embeds: [
-                new EmbedBuilder()
-                    .setTitle("📊 Stats")
-                    .setDescription(`🚀 Boosts total : ${total}`)
-                    .setColor(0xFFD700)
-            ],
-            ephemeral: true
-        });
-    }
-
 });
 
 // ================= XP =================
+
+const XP_PER_MESSAGE = 10;
+const XP_COOLDOWN = 10000;
 
 client.on("messageCreate", async (msg) => {
     if (msg.author.bot) return;
@@ -206,11 +184,7 @@ client.on("messageCreate", async (msg) => {
             ]
         });
 
-        const roleId = LEVEL_ROLES[newLevel];
-        if (roleId) {
-            const role = msg.guild.roles.cache.get(roleId);
-            if (role) msg.member.roles.add(role).catch(() => {});
-        }
+        log(`📈 ${msg.author.tag} est passé niveau ${newLevel}`);
     }
 
     saveXP();
