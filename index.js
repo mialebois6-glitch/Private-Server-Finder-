@@ -16,13 +16,26 @@ const fs = require("fs");
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
     ]
 });
 
 const CHANNEL_ID = "1501253385888727040";
+const LEADERBOARD_CHANNEL_ID = "1501455908847222886";
 const LOG_CHANNEL_ID = "1501255907089322246";
 const BOOSTER_ROLE_ID = "1501255314475974807";
+
+// 🎯 XP CONFIG
+const XP_PER_MESSAGE = 10;
+const XP_COOLDOWN = 10000;
+
+const LEVEL_ROLES = {
+    5: "ROLE_ID_LEVEL_5",
+    10: "ROLE_ID_LEVEL_10",
+    20: "ROLE_ID_LEVEL_20"
+};
 
 const LOCK_DURATION = 10 * 60 * 1000;
 const LOCK_PRICE = 500;
@@ -34,25 +47,36 @@ const BOOST_REWARD = 1000;
 let games = {};
 let boosts = {};
 let monthly = {};
+let xpData = {};
+let xpCooldown = {};
 let leaderboardMessageId = null;
 
 try { games = JSON.parse(fs.readFileSync("./games.json")); } catch {}
 try { boosts = JSON.parse(fs.readFileSync("./boosts.json")); } catch {}
 try { monthly = JSON.parse(fs.readFileSync("./monthly.json")); } catch {}
+try { xpData = JSON.parse(fs.readFileSync("./xp.json")); } catch {}
+try {
+    const data = JSON.parse(fs.readFileSync("./leaderboard.json"));
+    leaderboardMessageId = data.id;
+} catch {}
 
 // ================= SAVE =================
 
 const saveGames = () => fs.writeFileSync("./games.json", JSON.stringify(games, null, 2));
 const saveBoosts = () => fs.writeFileSync("./boosts.json", JSON.stringify(boosts, null, 2));
 const saveMonthly = () => fs.writeFileSync("./monthly.json", JSON.stringify(monthly, null, 2));
+const saveXP = () => fs.writeFileSync("./xp.json", JSON.stringify(xpData, null, 2));
+const saveLeaderboard = () => fs.writeFileSync("./leaderboard.json", JSON.stringify({ id: leaderboardMessageId }));
 
-// ================= LOG =================
+// ================= XP SYSTEM =================
 
-async function log(msg) {
-    try {
-        const ch = await client.channels.fetch(LOG_CHANNEL_ID);
-        if (ch) ch.send(msg);
-    } catch {}
+function getLevel(xp) {
+    return Math.floor(0.1 * Math.sqrt(xp));
+}
+
+function getXP(id) {
+    if (!xpData[id]) xpData[id] = { xp: 0, level: 0 };
+    return xpData[id];
 }
 
 // ================= COINS =================
@@ -102,231 +126,92 @@ function createButtons(key, link) {
 client.on("clientReady", async () => {
     console.log(`✅ ${client.user.tag}`);
 
-    try {
-        const channel = await client.channels.fetch(CHANNEL_ID);
+    const channel = await client.channels.fetch(CHANNEL_ID);
 
-        const menu = new StringSelectMenuBuilder()
-            .setCustomId("select_game")
-            .setPlaceholder("🎮 Choisir un jeu")
-            .addOptions(
-                Object.keys(games).map(k => ({
-                    label: games[k].name,
-                    value: k
-                }))
-            );
+    const menu = new StringSelectMenuBuilder()
+        .setCustomId("select_game")
+        .setPlaceholder("🎮 Choisir un jeu")
+        .addOptions(
+            Object.keys(games).map(k => ({
+                label: games[k].name,
+                value: k
+            }))
+        );
 
-        await channel.send({
-            content: "🎮 Choisis un jeu",
-            components: [new ActionRowBuilder().addComponents(menu)]
-        });
-
-    } catch (e) {
-        console.log("READY error", e);
-    }
+    await channel.send({
+        content: "🎮 Choisis un jeu",
+        components: [new ActionRowBuilder().addComponents(menu)]
+    });
 });
 
-// ================= BOOST + ROLE =================
+// ================= XP MESSAGE =================
 
-client.on("guildMemberUpdate", async (oldM, newM) => {
-    try {
-        const had = oldM.premiumSince;
-        const has = newM.premiumSince;
+client.on("messageCreate", async (msg) => {
+    if (msg.author.bot) return;
 
-        const role = newM.guild.roles.cache.get(BOOSTER_ROLE_ID);
+    const id = msg.author.id;
 
-        // 🚀 BOOST
-        if (!had && has) {
+    if (xpCooldown[id] && Date.now() < xpCooldown[id]) return;
+    xpCooldown[id] = Date.now() + XP_COOLDOWN;
 
-            addCoins(newM.id, BOOST_REWARD);
+    const user = getXP(id);
+    user.xp += XP_PER_MESSAGE;
 
-            if (!monthly[newM.id]) monthly[newM.id] = { boosts: 0 };
-            monthly[newM.id].boosts++;
+    const newLevel = getLevel(user.xp);
 
-            if (!boosts[newM.id]) boosts[newM.id] = { coins: 0, boosts: 0 };
-            boosts[newM.id].boosts++;
-
-            saveMonthly();
-            saveBoosts();
-
-            if (role) {
-                await newM.roles.add(role).catch(() => {});
-            }
-
-            log(`🚀 ${newM.user.tag} boost + rôle`);
-        }
-
-        // ❌ STOP BOOST
-        if (had && !has) {
-            if (role) {
-                await newM.roles.remove(role).catch(() => {});
-            }
-
-            log(`❌ ${newM.user.tag} stop boost`);
-        }
-
-    } catch (e) {
-        console.log("boost error", e);
-    }
-});
-
-// ================= INTERACTIONS =================
-
-client.on("interactionCreate", async (i) => {
-    try {
-
-        if (i.isStringSelectMenu() && i.customId === "select_game") {
-            const key = i.values[0];
-            const game = games[key];
-            const link = game.servers?.[0] || "https://roblox.com";
-
-            return i.reply({
-                embeds: [createEmbed(game)],
-                components: [createButtons(key, link)],
-                ephemeral: true
-            });
-        }
-
-        if (i.isButton() && i.customId.startsWith("lock_")) {
-            const key = i.customId.replace("lock_", "");
-            const game = games[key];
-            const id = i.user.id;
-
-            if (game.locked) return i.reply({ content: "🔒 déjà lock", ephemeral: true });
-
-            const booster = i.member.premiumSince;
-
-            if (!booster && getCoins(id) < LOCK_PRICE) {
-                return i.reply({ content: "💰 pas assez coins", ephemeral: true });
-            }
-
-            if (!booster) removeCoins(id, LOCK_PRICE);
-
-            game.locked = true;
-            game.lockLeader = id;
-            game.lockOwners = [id];
-            game.lockUntil = Date.now() + LOCK_DURATION;
-
-            saveGames();
-
-            return i.reply({ content: "🔐 lock actif", ephemeral: true });
-        }
-
-        if (i.isButton() && i.customId.startsWith("add_")) {
-            const key = i.customId.replace("add_", "");
-            const game = games[key];
-
-            if (game.lockLeader !== i.user.id) {
-                return i.reply({ content: "👑 leader only", ephemeral: true });
-            }
-
-            const menu = new UserSelectMenuBuilder()
-                .setCustomId(`add_user_${key}`)
-                .setPlaceholder("Choisir joueur");
-
-            return i.reply({
-                components: [new ActionRowBuilder().addComponents(menu)],
-                ephemeral: true
-            });
-        }
-
-        if (i.isUserSelectMenu()) {
-            const key = i.customId.replace("add_user_", "");
-            const game = games[key];
-            const target = i.values[0];
-
-            if (game.lockOwners.includes(target)) {
-                return i.reply({ content: "déjà team", ephemeral: true });
-            }
-
-            if (game.lockOwners.length >= MAX_TEAM_SIZE) {
-                return i.reply({ content: "team full", ephemeral: true });
-            }
-
-            game.lockOwners.push(target);
-            saveGames();
-
-            return i.update({
-                content: `✅ <@${target}> ajouté`,
-                components: []
-            });
-        }
-
-    } catch (err) {
-        console.log("interaction error", err);
-    }
-});
-
-// ================= AUTO UNLOCK =================
-
-setInterval(() => {
-    const now = Date.now();
-
-    for (const k in games) {
-        const g = games[k];
-        if (g.locked && now >= g.lockUntil) {
-            g.locked = false;
-            g.lockLeader = null;
-            g.lockOwners = [];
-        }
-    }
-
-    saveGames();
-}, 5000);
-
-// ================= LEADERBOARD LIVE =================
-
-async function updateLeaderboard() {
-    try {
-        const sorted = Object.entries(monthly)
-            .sort((a, b) => b[1].boosts - a[1].boosts)
-            .slice(0, 10);
-
-        const desc = sorted.map((u, i) =>
-            `**${i + 1}.** <@${u[0]}> • 🚀 ${u[1].boosts}`
-        ).join("\n");
+    if (newLevel > user.level) {
+        user.level = newLevel;
 
         const embed = new EmbedBuilder()
-            .setTitle("📊 Leaderboard LIVE")
-            .setDescription(desc || "Aucun booster")
-            .setColor(0x00ffcc);
+            .setTitle("🎉 Level Up !")
+            .setDescription(`🔥 <@${id}> est niveau **${newLevel}**`)
+            .setColor(0xFFD700);
 
-        const ch = await client.channels.fetch(CHANNEL_ID);
+        msg.channel.send({ embeds: [embed] });
 
-        if (!leaderboardMessageId) {
-            const msg = await ch.send({ embeds: [embed] });
-            leaderboardMessageId = msg.id;
-        } else {
-            const msg = await ch.messages.fetch(leaderboardMessageId);
-            msg.edit({ embeds: [embed] });
+        const roleId = LEVEL_ROLES[newLevel];
+        if (roleId) {
+            const role = msg.guild.roles.cache.get(roleId);
+            if (role) msg.member.roles.add(role).catch(() => {});
         }
+    }
 
-    } catch {}
+    saveXP();
+});
+
+// ================= LEADERBOARD =================
+
+async function updateLeaderboard() {
+    const sorted = Object.entries(monthly)
+        .sort((a, b) => b[1].boosts - a[1].boosts)
+        .slice(0, 10);
+
+    const medals = ["🥇", "🥈", "🥉"];
+
+    const desc = sorted.map((u, i) => {
+        let badge = medals[i] || `**${i + 1}.**`;
+        if (i === 0) return `👑 ${badge} <@${u[0]}> • 🚀 **${u[1].boosts}**`;
+        return `${badge} <@${u[0]}> • 🚀 ${u[1].boosts}`;
+    }).join("\n");
+
+    const embed = new EmbedBuilder()
+        .setTitle("📊 Leaderboard LIVE")
+        .setDescription(desc || "Aucun booster")
+        .setColor(0x00ffcc);
+
+    const ch = await client.channels.fetch(LEADERBOARD_CHANNEL_ID);
+
+    if (!leaderboardMessageId) {
+        const msg = await ch.send({ embeds: [embed] });
+        leaderboardMessageId = msg.id;
+        saveLeaderboard();
+    } else {
+        const msg = await ch.messages.fetch(leaderboardMessageId);
+        msg.edit({ embeds: [embed] });
+    }
 }
 
 setInterval(updateLeaderboard, 30000);
-
-// ================= RESET MENSUEL =================
-
-setInterval(async () => {
-    const d = new Date();
-
-    if (d.getDate() === 1 && d.getHours() === 0) {
-
-        const sorted = Object.entries(monthly)
-            .sort((a, b) => b[1].boosts - a[1].boosts)
-            .slice(0, 3);
-
-        const rewards = [5000, 3000, 1000];
-
-        sorted.forEach(([id], i) => addCoins(id, rewards[i]));
-
-        monthly = {};
-        saveMonthly();
-
-        log("🏆 récompenses mensuelles envoyées");
-    }
-
-}, 60 * 60 * 1000);
 
 // ================= LOGIN =================
 
