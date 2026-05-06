@@ -3,7 +3,6 @@ const {
     GatewayIntentBits,
     ActionRowBuilder,
     StringSelectMenuBuilder,
-    UserSelectMenuBuilder,
     ButtonBuilder,
     ButtonStyle,
     EmbedBuilder
@@ -27,7 +26,7 @@ const LEADERBOARD_CHANNEL_ID = "1501455908847222886";
 const LOG_CHANNEL_ID = "1501255907089322246";
 const BOOSTER_ROLE_ID = "1501255314475974807";
 
-// 🎯 XP CONFIG
+// XP
 const XP_PER_MESSAGE = 10;
 const XP_COOLDOWN = 10000;
 
@@ -37,38 +36,28 @@ const LEVEL_ROLES = {
     20: "ROLE_ID_LEVEL_20"
 };
 
-const LOCK_DURATION = 10 * 60 * 1000;
-const LOCK_PRICE = 500;
-const MAX_TEAM_SIZE = 5;
-const BOOST_REWARD = 1000;
-
 // ================= DATA =================
 
 let games = {};
-let boosts = {};
 let monthly = {};
 let xpData = {};
 let xpCooldown = {};
 let leaderboardMessageId = null;
+let dashboardMessageId = null;
 
 try { games = JSON.parse(fs.readFileSync("./games.json")); } catch {}
-try { boosts = JSON.parse(fs.readFileSync("./boosts.json")); } catch {}
 try { monthly = JSON.parse(fs.readFileSync("./monthly.json")); } catch {}
 try { xpData = JSON.parse(fs.readFileSync("./xp.json")); } catch {}
-try {
-    const data = JSON.parse(fs.readFileSync("./leaderboard.json"));
-    leaderboardMessageId = data.id;
-} catch {}
+try { leaderboardMessageId = JSON.parse(fs.readFileSync("./leaderboard.json")).id; } catch {}
+try { dashboardMessageId = JSON.parse(fs.readFileSync("./dashboard.json")).id; } catch {}
 
 // ================= SAVE =================
 
-const saveGames = () => fs.writeFileSync("./games.json", JSON.stringify(games, null, 2));
-const saveBoosts = () => fs.writeFileSync("./boosts.json", JSON.stringify(boosts, null, 2));
-const saveMonthly = () => fs.writeFileSync("./monthly.json", JSON.stringify(monthly, null, 2));
 const saveXP = () => fs.writeFileSync("./xp.json", JSON.stringify(xpData, null, 2));
 const saveLeaderboard = () => fs.writeFileSync("./leaderboard.json", JSON.stringify({ id: leaderboardMessageId }));
+const saveDashboard = () => fs.writeFileSync("./dashboard.json", JSON.stringify({ id: dashboardMessageId }));
 
-// ================= XP SYSTEM =================
+// ================= XP =================
 
 function getLevel(xp) {
     return Math.floor(0.1 * Math.sqrt(xp));
@@ -79,54 +68,19 @@ function getXP(id) {
     return xpData[id];
 }
 
-// ================= COINS =================
+// ================= DASHBOARD =================
 
-function getCoins(id) {
-    if (!boosts[id]) boosts[id] = { coins: 0, boosts: 0 };
-    return boosts[id].coins;
-}
-
-function addCoins(id, amount) {
-    if (!boosts[id]) boosts[id] = { coins: 0, boosts: 0 };
-    boosts[id].coins += amount;
-    saveBoosts();
-}
-
-function removeCoins(id, amount) {
-    boosts[id].coins -= amount;
-    saveBoosts();
-}
-
-// ================= EMBED =================
-
-function createEmbed(game) {
-    return new EmbedBuilder()
-        .setTitle(`🎮 ${game.name}`)
-        .setColor(0x5865F2)
-        .addFields(
-            { name: "🔐 Lock", value: game.locked ? "Oui" : "Non", inline: true },
-            { name: "👑 Leader", value: game.lockLeader ? `<@${game.lockLeader}>` : "Aucun", inline: true },
-            { name: "👥 Team", value: `${game.lockOwners?.length || 0}/${MAX_TEAM_SIZE}`, inline: true }
-        );
-}
-
-// ================= BUTTONS =================
-
-function createButtons(key, link) {
-    return new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel("🔗 Join").setStyle(ButtonStyle.Link).setURL(link),
-        new ButtonBuilder().setLabel("🔐 Lock").setStyle(ButtonStyle.Danger).setCustomId(`lock_${key}`),
-        new ButtonBuilder().setLabel("➕ Team").setStyle(ButtonStyle.Secondary).setCustomId(`add_${key}`),
-        new ButtonBuilder().setLabel("➖ Remove").setStyle(ButtonStyle.Secondary).setCustomId(`remove_${key}`)
-    );
-}
-
-// ================= READY =================
-
-client.on("clientReady", async () => {
-    console.log(`✅ ${client.user.tag}`);
-
+async function sendDashboard() {
     const channel = await client.channels.fetch(CHANNEL_ID);
+
+    const embed = new EmbedBuilder()
+        .setTitle("🚀 Private Server Finder")
+        .setDescription("🎮 Choisis un jeu ci-dessous\n⚡ Rapide & propre")
+        .addFields(
+            { name: "📊 Status", value: "🟢 Online", inline: true },
+            { name: "🎮 Jeux", value: `${Object.keys(games).length}`, inline: true }
+        )
+        .setColor(0x5865F2);
 
     const menu = new StringSelectMenuBuilder()
         .setCustomId("select_game")
@@ -138,13 +92,94 @@ client.on("clientReady", async () => {
             }))
         );
 
-    await channel.send({
-        content: "🎮 Choisis un jeu",
-        components: [new ActionRowBuilder().addComponents(menu)]
-    });
+    const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("refresh_ui")
+            .setLabel("Refresh")
+            .setEmoji("🔄")
+            .setStyle(ButtonStyle.Secondary),
+
+        new ButtonBuilder()
+            .setCustomId("stats_ui")
+            .setLabel("Stats")
+            .setEmoji("📊")
+            .setStyle(ButtonStyle.Primary)
+    );
+
+    const row = new ActionRowBuilder().addComponents(menu);
+
+    try {
+        if (dashboardMessageId) {
+            const msg = await channel.messages.fetch(dashboardMessageId);
+            await msg.edit({ embeds: [embed], components: [row, buttons] });
+        } else {
+            const msg = await channel.send({ embeds: [embed], components: [row, buttons] });
+            dashboardMessageId = msg.id;
+            saveDashboard();
+        }
+    } catch {
+        const msg = await channel.send({ embeds: [embed], components: [row, buttons] });
+        dashboardMessageId = msg.id;
+        saveDashboard();
+    }
+}
+
+// ================= READY =================
+
+client.on("clientReady", async () => {
+    console.log(`✅ ${client.user.tag}`);
+    await sendDashboard();
 });
 
-// ================= XP MESSAGE =================
+// ================= INTERACTIONS =================
+
+client.on("interactionCreate", async (i) => {
+
+    if (i.isStringSelectMenu() && i.customId === "select_game") {
+        const game = games[i.values[0]];
+
+        return i.reply({
+            embeds: [
+                new EmbedBuilder()
+                    .setTitle(`🎮 ${game.name}`)
+                    .setDescription("🔗 Clique pour rejoindre")
+                    .setColor(0x00ffcc)
+            ],
+            components: [
+                new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setLabel("Join Server")
+                        .setStyle(ButtonStyle.Link)
+                        .setURL(game.servers?.[0] || "https://roblox.com")
+                )
+            ],
+            ephemeral: true
+        });
+    }
+
+    if (i.isButton() && i.customId === "refresh_ui") {
+        await sendDashboard();
+        return i.reply({ content: "✅ Refresh fait", ephemeral: true });
+    }
+
+    if (i.isButton() && i.customId === "stats_ui") {
+        const total = Object.values(monthly)
+            .reduce((a, b) => a + b.boosts, 0);
+
+        return i.reply({
+            embeds: [
+                new EmbedBuilder()
+                    .setTitle("📊 Stats")
+                    .setDescription(`🚀 Boosts total : ${total}`)
+                    .setColor(0xFFD700)
+            ],
+            ephemeral: true
+        });
+    }
+
+});
+
+// ================= XP =================
 
 client.on("messageCreate", async (msg) => {
     if (msg.author.bot) return;
@@ -162,12 +197,14 @@ client.on("messageCreate", async (msg) => {
     if (newLevel > user.level) {
         user.level = newLevel;
 
-        const embed = new EmbedBuilder()
-            .setTitle("🎉 Level Up !")
-            .setDescription(`🔥 <@${id}> est niveau **${newLevel}**`)
-            .setColor(0xFFD700);
-
-        msg.channel.send({ embeds: [embed] });
+        msg.channel.send({
+            embeds: [
+                new EmbedBuilder()
+                    .setTitle("🎉 Level Up")
+                    .setDescription(`<@${id}> est niveau **${newLevel}**`)
+                    .setColor(0xFFD700)
+            ]
+        });
 
         const roleId = LEVEL_ROLES[newLevel];
         if (roleId) {
@@ -207,7 +244,7 @@ async function updateLeaderboard() {
         saveLeaderboard();
     } else {
         const msg = await ch.messages.fetch(leaderboardMessageId);
-        msg.edit({ embeds: [embed] });
+        await msg.edit({ embeds: [embed] });
     }
 }
 
