@@ -94,8 +94,7 @@ async function sendDashboard() {
         .setDescription(
             [
                 "🎮 Choisis un jeu ci-dessous",
-                "⚡ Boosters = accès instantané",
-                "⏳ Non boosters = attente 1 à 5 minutes"
+                "⚡ Accès instantané pour tous"
             ].join("\n")
         )
         .addFields(
@@ -194,102 +193,38 @@ client.on("interactionCreate", async (i) => {
 
         log(`🎮 ${i.user.tag} a sélectionné ${game.name}`);
 
-        // ================= BOOSTER =================
+        // ================= ACCÈS INSTANTANÉ =================
 
-        if (isBooster) {
-
-            return i.reply({
-                embeds: [
-                    new EmbedBuilder()
-                        .setTitle(`🚀 ${game.name}`)
-                        .setDescription(
-                            [
-                                "✅ Accès instantané booster",
-                                "",
-                                "🔗 Clique sur le bouton ci-dessous"
-                            ].join("\n")
-                        )
-                        .setColor(0x00ffcc)
-                ],
-
-                components: [
-                    new ActionRowBuilder().addComponents(
-                        new ButtonBuilder()
-                            .setLabel("🚀 Join Server")
-                            .setStyle(ButtonStyle.Link)
-                            .setURL(
-                                game.servers?.[0] ||
-                                "https://roblox.com"
-                            )
-                    )
-                ],
-
-                ephemeral: true
-            });
-        }
-
-        // ================= NON BOOSTER =================
-
-        const waitMinutes =
-            Math.floor(Math.random() * 5) + 1;
-
-        await i.reply({
+        return i.reply({
             embeds: [
                 new EmbedBuilder()
-                    .setTitle("⏳ Accès en attente")
+                    .setTitle(`🚀 ${game.name}`)
                     .setDescription(
                         [
-                            "🚫 Tu n'es pas booster",
+                            isBooster
+                                ? "✅ Accès instantané booster"
+                                : "✅ Accès disponible",
                             "",
-                            `⏱️ Temps d'attente : ${waitMinutes} minute(s)`,
-                            "",
-                            "🚀 Boost le serveur pour obtenir un accès instantané"
+                            "🔗 Clique sur le bouton ci-dessous"
                         ].join("\n")
                     )
-                    .setColor(0xffaa00)
+                    .setColor(0x00ffcc)
             ],
+
+            components: [
+                new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setLabel("🚀 Join Server")
+                        .setStyle(ButtonStyle.Link)
+                        .setURL(
+                            game.servers?.[0] ||
+                            "https://roblox.com"
+                        )
+                )
+            ],
+
             ephemeral: true
         });
-
-        // attente
-        setTimeout(async () => {
-
-            try {
-
-                await i.followUp({
-                    embeds: [
-                        new EmbedBuilder()
-                            .setTitle(`🎮 ${game.name}`)
-                            .setDescription(
-                                [
-                                    "✅ Ton accès est prêt",
-                                    "",
-                                    "🔗 Clique sur le bouton ci-dessous"
-                                ].join("\n")
-                            )
-                            .setColor(0x00ffcc)
-                    ],
-
-                    components: [
-                        new ActionRowBuilder().addComponents(
-                            new ButtonBuilder()
-                                .setLabel("🎮 Join Server")
-                                .setStyle(ButtonStyle.Link)
-                                .setURL(
-                                    game.servers?.[0] ||
-                                    "https://roblox.com"
-                                )
-                        )
-                    ],
-
-                    ephemeral: true
-                });
-
-            } catch (err) {
-                console.error("❌ Erreur followUp :", err);
-            }
-
-        }, waitMinutes * 60 * 1000);
     }
 });
 
