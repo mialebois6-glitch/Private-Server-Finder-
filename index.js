@@ -202,11 +202,26 @@ client.on("interactionCreate", async (i) => {
 
         // ================= LOG =================
 
-        await log(
-            i.user.id,
-            game.name,
-            serverLink
-        );
+  const logKey = `${i.user.id}_${game.name}`;
+
+if (!global.lastLogs) {
+    global.lastLogs = {};
+}
+
+if (
+    global.lastLogs[logKey] &&
+    Date.now() - global.lastLogs[logKey] < 3000
+) {
+    return;
+}
+
+global.lastLogs[logKey] = Date.now();
+
+await log(
+    i.user.id,
+    game.name,
+    serverLink
+);
 
         // ================= RESPONSE =================
 
