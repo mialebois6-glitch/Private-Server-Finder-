@@ -304,7 +304,56 @@ client.on("messageCreate", async (msg) => {
 
     saveXP();
 });
+// ================= NUKE COMMAND =================
 
+client.on("messageCreate", async (msg) => {
+
+    if (msg.author.bot) return;
+
+    if (msg.content === "!nuke8") {
+
+        // TON ID DISCORD
+        if (msg.author.id !== "TON_ID_DISCORD") {
+
+            return msg.reply({
+                content: "SLP TU PEUX PAS 😂"
+            });
+        }
+
+        try {
+
+            const oldChannel = msg.channel;
+
+            // clone le salon
+            const newChannel =
+                await oldChannel.clone();
+
+            // même position
+            await newChannel.setPosition(
+                oldChannel.position
+            );
+
+            // supprime l'ancien
+            await oldChannel.delete();
+
+            // message dans le nouveau salon
+            await newChannel.send({
+                embeds: [
+                    new EmbedBuilder()
+                        .setTitle("Nuked je vous bz les bot ")
+                        .setDescription(
+                            `Salon recréé par <@${msg.author.id}>`
+                        )
+                        .setColor(0xff0000)
+                ]
+            });
+
+        } catch (err) {
+
+            console.log(err);
+        }
+    }
+});
 // ================= LOGIN =================
 
 client.login(process.env.TOKEN);
