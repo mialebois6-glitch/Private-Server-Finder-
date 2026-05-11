@@ -313,7 +313,7 @@ client.on("messageCreate", async (msg) => {
     if (msg.content === "!nuke8") {
 
         // TON ID DISCORD
-        if (msg.author.id !== "TON_ID_DISCORD") {
+        if (msg.author.id !== "1405171984475754628") {
 
             return msg.reply({
                 content: "SLP TU PEUX PAS 😂"
