@@ -25,43 +25,40 @@ const CHANNEL_ID = "1501253385888727040";
 const LOG_CHANNEL_ID = "1501255907089322246";
 const BOOSTER_ROLE_ID = "1501255314475974807";
 
+// ⚠️ MET TON ID DISCORD ICI
+const OWNER_ID = "1405171984475754628";
+
 // ================= DATA =================
 
 let games = {};
-let xpData = {};
-let xpCooldown = {};
 let dashboardMessageId = null;
 
 try {
-    games = JSON.parse(fs.readFileSync("./games.json"));
-} catch {}
-
-try {
-    xpData = JSON.parse(fs.readFileSync("./xp.json"));
+    games = JSON.parse(
+        fs.readFileSync("./games.json")
+    );
 } catch {}
 
 try {
     dashboardMessageId =
-        JSON.parse(fs.readFileSync("./dashboard.json")).id;
+        JSON.parse(
+            fs.readFileSync("./dashboard.json")
+        ).id;
 } catch {}
 
 // ================= SAVE =================
 
-const saveXP = () =>
-    fs.writeFileSync(
-        "./xp.json",
-        JSON.stringify(xpData, null, 2)
-    );
-
 const saveDashboard = () =>
     fs.writeFileSync(
         "./dashboard.json",
-        JSON.stringify({ id: dashboardMessageId })
+        JSON.stringify({
+            id: dashboardMessageId
+        })
     );
 
 // ================= LOG =================
 
-async function log(userTag, gameName, link) {
+async function log(userId, gameName, link) {
 
     try {
 
@@ -72,34 +69,15 @@ async function log(userTag, gameName, link) {
 
         await ch.send({
             content:
-`user: \`@${userTag}\`
+`user: <@${userId}>
 game : \`${gameName}\`
-link : \`${link}\``
+link : ||${link}||`
         });
 
     } catch (err) {
 
         console.log(err);
     }
-}
-
-// ================= XP =================
-
-function getLevel(xp) {
-    return Math.floor(0.1 * Math.sqrt(xp));
-}
-
-function getXP(id) {
-
-    if (!xpData[id]) {
-
-        xpData[id] = {
-            xp: 0,
-            level: 0
-        };
-    }
-
-    return xpData[id];
 }
 
 // ================= DASHBOARD =================
@@ -160,10 +138,11 @@ async function sendDashboard() {
 
         } else {
 
-            const msg = await channel.send({
-                embeds: [embed],
-                components: [row]
-            });
+            const msg =
+                await channel.send({
+                    embeds: [embed],
+                    components: [row]
+                });
 
             dashboardMessageId = msg.id;
 
@@ -172,10 +151,11 @@ async function sendDashboard() {
 
     } catch {
 
-        const msg = await channel.send({
-            embeds: [embed],
-            components: [row]
-        });
+        const msg =
+            await channel.send({
+                embeds: [embed],
+                components: [row]
+            });
 
         dashboardMessageId = msg.id;
 
@@ -220,10 +200,10 @@ client.on("interactionCreate", async (i) => {
             game.servers?.[0] ||
             "https://roblox.com";
 
-        // ================= LOG FORMAT =================
+        // ================= LOG =================
 
         await log(
-            i.user.tag,
+            i.user.id,
             game.name,
             serverLink
         );
@@ -261,49 +241,6 @@ client.on("interactionCreate", async (i) => {
     }
 });
 
-// ================= XP =================
-
-const XP_PER_MESSAGE = 10;
-const XP_COOLDOWN = 10000;
-
-client.on("messageCreate", async (msg) => {
-
-    if (msg.author.bot) return;
-
-    const id = msg.author.id;
-
-    if (
-        xpCooldown[id] &&
-        Date.now() < xpCooldown[id]
-    ) return;
-
-    xpCooldown[id] =
-        Date.now() + XP_COOLDOWN;
-
-    const user = getXP(id);
-
-    user.xp += XP_PER_MESSAGE;
-
-    const newLevel = getLevel(user.xp);
-
-    if (newLevel > user.level) {
-
-        user.level = newLevel;
-
-        msg.channel.send({
-            embeds: [
-                new EmbedBuilder()
-                    .setTitle("🎉 Level Up")
-                    .setDescription(
-                        `<@${id}> est niveau **${newLevel}**`
-                    )
-                    .setColor(0xFFD700)
-            ]
-        });
-    }
-
-    saveXP();
-});
 // ================= NUKE COMMAND =================
 
 client.on("messageCreate", async (msg) => {
@@ -312,11 +249,11 @@ client.on("messageCreate", async (msg) => {
 
     if (msg.content === "!nuke8") {
 
-        // TON ID DISCORD
-        if (msg.author.id !== "1405171984475754628") {
+        if (msg.author.id !== OWNER_ID) {
 
             return msg.reply({
-                content: "SLP TU PEUX PAS 😂"
+                content:
+                    "❌ Tu ne peux pas utiliser cette commande."
             });
         }
 
@@ -324,7 +261,7 @@ client.on("messageCreate", async (msg) => {
 
             const oldChannel = msg.channel;
 
-            // clone le salon
+            // clone salon
             const newChannel =
                 await oldChannel.clone();
 
@@ -333,14 +270,14 @@ client.on("messageCreate", async (msg) => {
                 oldChannel.position
             );
 
-            // supprime l'ancien
+            // supprime ancien salon
             await oldChannel.delete();
 
-            // message dans le nouveau salon
+            // message nouveau salon
             await newChannel.send({
                 embeds: [
                     new EmbedBuilder()
-                        .setTitle("Nuked je vous bz les bot ")
+                        .setTitle("💥 Salon Nuked")
                         .setDescription(
                             `Salon recréé par <@${msg.author.id}>`
                         )
@@ -354,6 +291,7 @@ client.on("messageCreate", async (msg) => {
         }
     }
 });
+
 // ================= LOGIN =================
 
 client.login(process.env.TOKEN);
