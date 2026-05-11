@@ -72,9 +72,9 @@ async function log(userTag, gameName, link) {
 
         await ch.send({
             content:
-`user: \`${userTag}\`
+`user: \`@${userTag}\`
 game : \`${gameName}\`
-link : \`||${link}||\``
+link : \`${link}\``
         });
 
     } catch (err) {
