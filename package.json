@@ -1,17 +1,16 @@
 {
-  "name": "mee6-panel",
-  "private": true,
+  "name": "Private-Server-Finder-",
+  "version": "1.0.0",
+  "description": "Discord bot FruityBlox stock",
+  "main": "index.js",
+  "type": "commonjs",
   "scripts": {
-    "dev": "next dev"
+    "start": "node index.js"
   },
   "dependencies": {
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "next-auth": "latest",
-    "recharts": "latest",
-    "tailwindcss": "latest",
-    "autoprefixer": "latest",
-    "postcss": "latest"
+    "axios": "^1.7.2",
+    "cheerio": "^1.0.0",
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5"
   }
 }
