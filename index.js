@@ -14,12 +14,12 @@ const client = new Client({
 });
 
 const TOKEN = process.env.TOKEN;
-const CHANNEL_ID = process.env.CHANNEL_ID;
-const ROLE_ID = process.env.ROLE_ID;
+const USER_ID = process.env.USER_ID;
 
 let messageId = null;
 let oldStock = "";
 
+// Emojis fruits
 const fruitEmojis = {
     Rocket: "🚀",
     Spin: "🌀",
@@ -51,7 +51,7 @@ const fruitEmojis = {
     Blizzard: "🌨️",
     Gravity: "🌌",
     Mammoth: "🦣",
-    T-Rex: "🦖",
+    "T-Rex": "🦖",
     Dough: "🍩",
     Shadow: "🌑",
     Venom: "☠️",
@@ -82,18 +82,19 @@ async function getStock() {
 
         $(".stock-item").each((i, el) => {
 
-            const fruit = $(el).find(".fruit-name").text().trim();
+            const fruit = $(el)
+                .find(".fruit-name")
+                .text()
+                .trim();
 
-            if (fruit) {
-                fruits.push(fruit);
-            }
+            if (fruit) fruits.push(fruit);
         });
 
         return fruits;
 
     } catch (err) {
 
-        console.log("Erreur FruityBlox :", err.message);
+        console.log("Erreur :", err.message);
         return [];
     }
 }
@@ -117,11 +118,25 @@ async function updateStock() {
 
     const stockText = formatStock(fruits);
 
+    // évite les updates inutiles
     if (stockText === oldStock) return;
 
     oldStock = stockText;
 
-    const channel = await client.channels.fetch(CHANNEL_ID);
+    const user = await client.users.fetch(USER_ID);
+
+    const channel = await user.createDM();
+
+    // notification fruits rares
+    let notif = "";
+
+    if (fruits.includes("Dragon")) {
+        notif += "🐉 DRAGON EN STOCK !\n";
+    }
+
+    if (fruits.includes("Kitsune")) {
+        notif += "🦊 KITSUNE EN STOCK !";
+    }
 
     const embed = new EmbedBuilder()
         .setColor("#2b2d31")
@@ -132,16 +147,6 @@ async function updateStock() {
         })
         .setTimestamp();
 
-    // ping fruits rares
-    let ping = "";
-
-    if (
-        fruits.includes("Dragon") ||
-        fruits.includes("Kitsune")
-    ) {
-        ping = `<@&${ROLE_ID}> 🐉 Fruit rare en stock !`;
-    }
-
     // update du même message
     if (messageId) {
 
@@ -150,14 +155,14 @@ async function updateStock() {
             const msg = await channel.messages.fetch(messageId);
 
             await msg.edit({
-                content: ping,
+                content: notif,
                 embeds: [embed]
             });
 
         } catch {
 
             const newMsg = await channel.send({
-                content: ping,
+                content: notif,
                 embeds: [embed]
             });
 
@@ -167,7 +172,7 @@ async function updateStock() {
     } else {
 
         const newMsg = await channel.send({
-            content: ping,
+            content: notif,
             embeds: [embed]
         });
 
@@ -183,6 +188,7 @@ client.once("ready", async () => {
 
     await updateStock();
 
+    // refresh toutes les 5 min
     setInterval(updateStock, 300000);
 });
 
