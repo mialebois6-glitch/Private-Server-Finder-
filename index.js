@@ -9,7 +9,10 @@ const {
 require("dotenv").config();
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds]
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.DirectMessages
+    ]
 });
 
 const commands = [
@@ -19,7 +22,7 @@ const commands = [
         .addStringOption(option =>
             option
                 .setName("texte")
-                .setDescription("Le message")
+                .setDescription("Le message à envoyer")
                 .setRequired(true)
         )
 ].map(command => command.toJSON());
@@ -31,6 +34,7 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
         console.log("Création des commandes...");
 
+        // Commande globale
         await rest.put(
             Routes.applicationCommands(process.env.CLIENT_ID),
             { body: commands }
@@ -43,7 +47,7 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
     }
 })();
 
-client.on("ready", () => {
+client.once("ready", () => {
     console.log(`${client.user.tag} connecté`);
 });
 
@@ -55,9 +59,14 @@ client.on("interactionCreate", async interaction => {
 
         const texte = interaction.options.getString("texte");
 
+        // Réponse invisible
         await interaction.reply({
-            content: texte
+            content: "Message envoyé",
+            ephemeral: true
         });
+
+        // Envoie dans le salon ou en MP
+        await interaction.channel.send(texte);
     }
 });
 
