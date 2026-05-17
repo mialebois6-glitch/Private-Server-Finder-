@@ -48,7 +48,7 @@ const fruitEmojis = {
     Flame: "🔥",
     Shadow: "🌑",
     Mammoth: "🦣",
-    T-Rex: "🦖",
+    "T-Rex": "🦖",
     Control: "🎮",
     Gravity: "🌌",
     Blizzard: "🌨️"
