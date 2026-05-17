@@ -17,18 +17,18 @@ const client = new Client({
 
 /*
 |--------------------------------------------------------------------------
-| COMMANDES
+| Slash Commands
 |--------------------------------------------------------------------------
 */
 
 const commands = [
     new SlashCommandBuilder()
         .setName("msg")
-        .setDescription("Envoyer un message")
+        .setDescription("Envoyer un message invisible")
         .addStringOption(option =>
             option
                 .setName("texte")
-                .setDescription("Message")
+                .setDescription("Le message à envoyer")
                 .setRequired(true)
         )
 ].map(cmd => cmd.toJSON());
@@ -37,7 +37,7 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
 /*
 |--------------------------------------------------------------------------
-| REGISTER
+| Register Commands
 |--------------------------------------------------------------------------
 */
 
@@ -45,28 +45,28 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
     try {
 
+        console.log("Création des slash commands...");
+
         await rest.put(
             Routes.applicationCommands(process.env.CLIENT_ID),
             { body: commands }
         );
 
-        console.log("Slash commands créées");
+        console.log("Slash commands créées.");
 
     } catch (err) {
-
         console.error(err);
-
     }
 
 })();
 
 /*
 |--------------------------------------------------------------------------
-| READY
+| Ready
 |--------------------------------------------------------------------------
 */
 
-client.once("clientReady", () => {
+client.once("ready", () => {
 
     console.log(`${client.user.tag} connecté`);
 
@@ -74,7 +74,7 @@ client.once("clientReady", () => {
 
 /*
 |--------------------------------------------------------------------------
-| INTERACTIONS
+| Interaction
 |--------------------------------------------------------------------------
 */
 
@@ -88,23 +88,16 @@ client.on("interactionCreate", async interaction => {
 
         try {
 
-            // MP
-            if (!interaction.guild) {
-
-                await interaction.reply({
-                    content: texte
-                });
-
-                return;
-            }
-
-            // SERVEUR
+            // Réponse invisible
             await interaction.reply({
-                content: "✅",
+                content: "✅ Message envoyé",
                 ephemeral: true
             });
 
-            await interaction.channel.send(texte);
+            // Message visible
+            await interaction.followUp({
+                content: texte
+            });
 
         } catch (err) {
 
@@ -116,7 +109,7 @@ client.on("interactionCreate", async interaction => {
 
 /*
 |--------------------------------------------------------------------------
-| LOGIN
+| Login
 |--------------------------------------------------------------------------
 */
 
