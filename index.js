@@ -209,7 +209,7 @@ client.on("interactionCreate", async interaction => {
                         )
                         .setColor("#ff73fa")
                         .setImage(
-                            "attachment://nitro.png"
+                            "attachment://https://refillarena.com/_next/image?url=https%3A%2F%2Frefillarena.s3.amazonaws.com%2Fdiscord+nitro.png&w=640&q=75"
                         );
 
                 const file =
