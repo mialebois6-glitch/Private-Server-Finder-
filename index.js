@@ -16,7 +16,8 @@ const fs = require("fs");
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.DirectMessages
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.MessageContent
     ]
 });
 
@@ -28,7 +29,9 @@ const CONFIG_FILE = "./users.json";
 let users = {};
 
 if (fs.existsSync(CONFIG_FILE)) {
-    users = JSON.parse(fs.readFileSync(CONFIG_FILE));
+    users = JSON.parse(
+        fs.readFileSync(CONFIG_FILE)
+    );
 }
 
 // emojis
@@ -42,11 +45,17 @@ const fruitEmojis = {
     Buddha: "🟡",
     Portal: "🌀",
     Rumble: "⚡",
-    Flame: "🔥"
+    Flame: "🔥",
+    Shadow: "🌑",
+    Mammoth: "🦣",
+    T-Rex: "🦖",
+    Control: "🎮",
+    Gravity: "🌌",
+    Blizzard: "🌨️"
 };
 
-// save config
 function saveUsers() {
+
     fs.writeFileSync(
         CONFIG_FILE,
         JSON.stringify(users, null, 2)
@@ -57,23 +66,32 @@ function saveUsers() {
 const commands = [
     new SlashCommandBuilder()
         .setName("apply")
-        .setDescription("Configure ton stock bot")
+        .setDescription(
+            "Configure tes notifications"
+        )
         .toJSON()
 ];
 
-const rest = new REST({ version: "10" })
-    .setToken(TOKEN);
+const rest = new REST({
+    version: "10"
+}).setToken(TOKEN);
 
 (async () => {
 
     try {
 
         await rest.put(
-            Routes.applicationCommands(CLIENT_ID),
-            { body: commands }
+            Routes.applicationCommands(
+                CLIENT_ID
+            ),
+            {
+                body: commands
+            }
         );
 
-        console.log("Slash command chargé");
+        console.log(
+            "Commande /apply chargée"
+        );
 
     } catch (err) {
 
@@ -96,19 +114,24 @@ async function getStock() {
             }
         );
 
-        const $ = cheerio.load(response.data);
+        const $ = cheerio.load(
+            response.data
+        );
 
         let fruits = [];
 
-        $(".stock-item").each((i, el) => {
+        $(".stock-item").each(
+            (i, el) => {
 
-            const fruit = $(el)
-                .find(".fruit-name")
-                .text()
-                .trim();
+                const fruit = $(el)
+                    .find(".fruit-name")
+                    .text()
+                    .trim();
 
-            if (fruit) fruits.push(fruit);
-        });
+                if (fruit)
+                    fruits.push(fruit);
+            }
+        );
 
         return fruits;
 
@@ -118,182 +141,360 @@ async function getStock() {
     }
 }
 
-// slash command interaction
-client.on("interactionCreate", async interaction => {
+// commande
+client.on(
+    "interactionCreate",
+    async interaction => {
 
-    if (!interaction.isChatInputCommand()) return;
+        if (
+            !interaction.isChatInputCommand()
+        )
+            return;
 
-    if (interaction.commandName === "apply") {
+        if (
+            interaction.commandName ===
+            "apply"
+        ) {
 
-        users[interaction.user.id] = {
-            fruits: [],
-            pingStock: true
-        };
+            const userId =
+                interaction.user.id;
 
-        saveUsers();
+            const dm =
+                await interaction.user.createDM();
 
-        await interaction.reply({
-            content: "📩 Regarde tes MP.",
-            ephemeral: true
-        });
+            // déjà configuré
+            if (users[userId]) {
 
-        const dm = await interaction.user.createDM();
+                await interaction.reply({
+                    content:
+                        "📩 Regarde tes MP.",
+                    ephemeral: true
+                });
 
-        await dm.send(
-`🍎 CONFIGURATION BLOX FRUIT
+                await dm.send({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setColor(
+                                "#ff2f6d"
+                            )
+                            .setTitle(
+                                "⚙️ Configuration déjà existante"
+                            )
+                            .setDescription(
+`Tu as déjà une configuration.
 
-Envoie les fruits que tu veux surveiller.
+Veux-tu la reconfigurer ?
+
+✅ oui
+❌ non`
+                            )
+                    ]
+                });
+
+                const filter = m =>
+                    m.author.id ===
+                    userId;
+
+                const collector =
+                    dm.createMessageCollector(
+                        {
+                            filter,
+                            max: 1,
+                            time: 60000
+                        }
+                    );
+
+                collector.on(
+                    "collect",
+                    async msg => {
+
+                        if (
+                            msg.content.toLowerCase() !==
+                            "oui"
+                        ) {
+
+                            return dm.send(
+                                "❌ Configuration annulée."
+                            );
+                        }
+
+                        setupUser(
+                            interaction,
+                            dm
+                        );
+                    }
+                );
+
+            } else {
+
+                await interaction.reply({
+                    content:
+                        "📩 Regarde tes MP.",
+                    ephemeral: true
+                });
+
+                setupUser(
+                    interaction,
+                    dm
+                );
+            }
+        }
+    }
+);
+
+// setup utilisateur
+async function setupUser(
+    interaction,
+    dm
+) {
+
+    const userId =
+        interaction.user.id;
+
+    users[userId] = {
+        fruits: [],
+        pingStock: true
+    };
+
+    saveUsers();
+
+    await dm.send({
+        embeds: [
+            new EmbedBuilder()
+                .setColor("#ff2f6d")
+                .setTitle(
+                    "🍎 Configuration Blox Fruits"
+                )
+                .setDescription(
+`Choisis les fruits à surveiller.
 
 Exemple :
-Dragon,Kitsune,Leopard
+\`Dragon,Kitsune,Leopard\`
 
-Tape :
-all
+ou :
+
+\`all\`
+
 pour tous les fruits.`
-        );
+                )
+                .setThumbnail(
+                    "https://tr.rbxcdn.com/180DAY-f909895fbb89d32f1c0a8ff881a688b9/420/420/Image/Png/noFilter"
+                )
+        ]
+    });
 
-        const filter = m => m.author.id === interaction.user.id;
+    const filter = m =>
+        m.author.id === userId;
 
-        const collector = dm.createMessageCollector({
+    const collector =
+        dm.createMessageCollector({
             filter,
-            time: 60000,
-            max: 1
+            max: 1,
+            time: 60000
         });
 
-        collector.on("collect", async msg => {
+    collector.on(
+        "collect",
+        async msg => {
 
             let fruits = [];
 
             if (
-                msg.content.toLowerCase() === "all"
+                msg.content.toLowerCase() ===
+                "all"
             ) {
 
                 fruits = ["all"];
 
             } else {
 
-                fruits = msg.content
-                    .split(",")
-                    .map(f => f.trim());
+                fruits =
+                    msg.content
+                        .split(",")
+                        .map(f =>
+                            f.trim()
+                        );
             }
 
-            users[interaction.user.id].fruits =
+            users[userId].fruits =
                 fruits;
-
-            await dm.send(
-`🔔 Veux-tu être ping quand il y a du stock ?
-
-Répond :
-oui
-ou
-non`
-            );
 
             saveUsers();
 
+            await dm.send({
+                embeds: [
+                    new EmbedBuilder()
+                        .setColor(
+                            "#5865F2"
+                        )
+                        .setTitle(
+                            "🔔 Notifications"
+                        )
+                        .setDescription(
+`Veux-tu être ping quand un fruit recherché est en stock ?
+
+✅ oui
+❌ non`
+                        )
+                ]
+            });
+
             const collector2 =
-                dm.createMessageCollector({
-                    filter,
-                    time: 60000,
-                    max: 1
-                });
+                dm.createMessageCollector(
+                    {
+                        filter,
+                        max: 1,
+                        time: 60000
+                    }
+                );
 
             collector2.on(
                 "collect",
                 async msg2 => {
 
                     users[
-                        interaction.user.id
+                        userId
                     ].pingStock =
                         msg2.content.toLowerCase() ===
                         "oui";
 
                     saveUsers();
 
-                    await dm.send(
-                        "✅ Configuration terminée."
-                    );
+                    await dm.send({
+                        embeds: [
+                            new EmbedBuilder()
+                                .setColor(
+                                    "#57F287"
+                                )
+                                .setTitle(
+                                    "✅ Configuration terminée"
+                                )
+                                .setDescription(
+`Tes notifications sont maintenant actives.`
+                                )
+                        ]
+                    });
                 }
             );
-        });
-    }
-});
+        }
+    );
+}
 
 // update stock
 async function updateStock() {
 
-    const fruits = await getStock();
+    const fruits =
+        await getStock();
 
     if (!fruits.length) return;
 
     for (const userId in users) {
 
-        const config = users[userId];
+        try {
 
-        const user =
-            await client.users.fetch(userId);
+            const config =
+                users[userId];
 
-        let detected = [];
+            const user =
+                await client.users.fetch(
+                    userId
+                );
 
-        if (
-            config.fruits.includes("all")
-        ) {
+            let watched = [];
 
-            detected = fruits;
+            if (
+                config.fruits.includes(
+                    "all"
+                )
+            ) {
 
-        } else {
+                watched = fruits;
 
-            detected = fruits.filter(f =>
-                config.fruits.includes(f)
+            } else {
+
+                watched =
+                    fruits.filter(f =>
+                        config.fruits.includes(
+                            f
+                        )
+                    );
+            }
+
+            const stockText =
+                fruits
+                    .map(f => {
+
+                        const emoji =
+                            fruitEmojis[
+                                f
+                            ] || "🍎";
+
+                        return `${emoji} ${f}`;
+                    })
+                    .join("\n");
+
+            const embed =
+                new EmbedBuilder()
+                    .setColor(
+                        "#2b2d31"
+                    )
+                    .setTitle(
+                        "🍎 Live Blox Fruits Stock"
+                    )
+                    .setDescription(
+                        stockText
+                    )
+                    .setFooter({
+                        text: "Updates every 5 minutes"
+                    })
+                    .setTimestamp();
+
+            let content = "";
+
+            // ping UNIQUEMENT si fruit recherché
+            if (
+                watched.length &&
+                config.pingStock
+            ) {
+
+                content =
+`🚨 Fruits recherchés trouvés !
+
+${watched.map(f =>
+`${fruitEmojis[f] || "🍎"} ${f}`
+).join("\n")}`;
+            }
+
+            await user.send({
+                content,
+                embeds: [embed]
+            });
+
+        } catch (err) {
+
+            console.log(
+                "Erreur user :",
+                err.message
             );
         }
-
-        if (!detected.length) continue;
-
-        const stockText = detected
-            .map(f => {
-
-                const emoji =
-                    fruitEmojis[f] || "🍎";
-
-                return `${emoji} ${f}`;
-            })
-            .join("\n");
-
-        const embed = new EmbedBuilder()
-            .setColor("#2b2d31")
-            .setTitle(
-                "🍎 FruityBlox Stock Alert"
-            )
-            .setDescription(stockText)
-            .setFooter({
-                text: "Live stock"
-            })
-            .setTimestamp();
-
-        let content = "";
-
-        if (config.pingStock) {
-            content =
-                "🚨 Fruit disponible !";
-        }
-
-        await user.send({
-            content,
-            embeds: [embed]
-        });
     }
 }
 
-client.once("ready", async () => {
+client.once(
+    "ready",
+    async () => {
 
-    console.log(
-        `${client.user.tag} connecté`
-    );
+        console.log(
+            `${client.user.tag} connecté`
+        );
 
-    updateStock();
+        updateStock();
 
-    setInterval(updateStock, 300000);
-});
+        setInterval(
+            updateStock,
+            300000
+        );
+    }
+);
 
 client.login(TOKEN);
