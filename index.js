@@ -4,8 +4,7 @@ const {
     REST,
     Routes,
     SlashCommandBuilder,
-    EmbedBuilder,
-    AttachmentBuilder
+    EmbedBuilder
 } = require("discord.js");
 
 require("dotenv").config();
@@ -132,121 +131,113 @@ client.on("interactionCreate", async interaction => {
     |--------------------------------------------------------------------------
     */
 
-    if (interaction.isChatInputCommand()) {
+    if (!interaction.isChatInputCommand()) return;
 
-        /*
-        |--------------------------------------------------------------------------
-        | /msg
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | /msg
+    |--------------------------------------------------------------------------
+    */
 
-        if (interaction.commandName === "msg") {
+    if (interaction.commandName === "msg") {
 
-            const texte =
-                interaction.options.getString("texte");
+        const texte =
+            interaction.options.getString("texte");
 
-            try {
+        try {
 
-                /*
-                |--------------------------------------------------------------------------
-                | MP
-                |--------------------------------------------------------------------------
-                */
+            /*
+            |--------------------------------------------------------------------------
+            | MP
+            |--------------------------------------------------------------------------
+            */
 
-                if (!interaction.guild) {
-
-                    await interaction.reply({
-                        content: texte
-                    });
-
-                    return;
-
-                }
-
-                /*
-                |--------------------------------------------------------------------------
-                | SERVEUR
-                |--------------------------------------------------------------------------
-                */
+            if (!interaction.guild) {
 
                 await interaction.reply({
-                    content: "✅",
-                    ephemeral: true
+                    content: texte
                 });
 
-                await interaction.channel.send(texte);
-
-            } catch (err) {
-
-                console.error(err);
+                return;
 
             }
+
+            /*
+            |--------------------------------------------------------------------------
+            | SERVEUR
+            |--------------------------------------------------------------------------
+            */
+
+            await interaction.reply({
+                content: "✅",
+                ephemeral: true
+            });
+
+            await interaction.channel.send(texte);
+
+        } catch (err) {
+
+            console.error(err);
 
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | /nit
-        |--------------------------------------------------------------------------
-        */
+    }
 
-        if (interaction.commandName === "nit") {
+    /*
+    |--------------------------------------------------------------------------
+    | /nit
+    |--------------------------------------------------------------------------
+    */
 
-            const user =
-                interaction.options.getUser(
-                    "utilisateur"
-                );
+    if (interaction.commandName === "nit") {
 
-            try {
+        const user =
+            interaction.options.getUser(
+                "utilisateur"
+            );
 
-                const embed =
-                    new EmbedBuilder()
-                        .setTitle(
-                            "🎁 You've been gifted!"
-                        )
-                        .setDescription(
-                            `${user} Clique pour ouvrir ton cadeau`
-                        )
-                        .setColor("#ff73fa")
-                        .setImage(
-                            "attachment://https://refillarena.com/_next/image?url=https%3A%2F%2Frefillarena.s3.amazonaws.com%2Fdiscord+nitro.png&w=640&q=75"
-                        );
+        try {
 
-                const file =
-                    new AttachmentBuilder(
-                        "./nitro.png"
+            const embed =
+                new EmbedBuilder()
+                    .setTitle(
+                        "🎁 You've been gifted a subscription!"
+                    )
+                    .setDescription(
+                        `${user} You Only Have 72h to claim it!`
+                    )
+                    .setColor("#ff73fa")
+                    .setImage(
+                        "https://refillarena.com/_next/image?url=https%3A%2F%2Frefillarena.s3.amazonaws.com%2Fdiscord+nitro.png&w=640&q=75"
                     );
 
-                await user.send({
+            await user.send({
 
-                    embeds: [embed],
-                    files: [file]
+                embeds: [embed]
 
-                });
+            });
 
-                await interaction.reply({
+            await interaction.reply({
 
-                    content:
-                        `✅ MP envoyé à ${user.tag}`,
+                content:
+                    `✅ MP envoyé à ${user.tag}`,
 
-                    ephemeral: true
+                ephemeral: true
 
-                });
+            });
 
-            } catch (err) {
+        } catch (err) {
 
-                console.error(err);
+            console.error(err);
 
-                await interaction.reply({
+            await interaction.reply({
 
-                    content:
-                        `❌ ${err.message}`,
+                content:
+                    `❌ ${err.message}`,
 
-                    ephemeral: true
+                ephemeral: true
 
-                });
-
-            }
+            });
 
         }
 
