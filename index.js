@@ -10,6 +10,12 @@ const {
 
 require("dotenv").config();
 
+/*
+|--------------------------------------------------------------------------
+| CLIENT
+|--------------------------------------------------------------------------
+*/
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -25,7 +31,12 @@ const client = new Client({
 
 const commands = [
 
-    // /msg
+    /*
+    |--------------------------------------------------------------------------
+    | /msg
+    |--------------------------------------------------------------------------
+    */
+
     new SlashCommandBuilder()
         .setName("msg")
         .setDescription("Envoyer un message")
@@ -36,10 +47,15 @@ const commands = [
                 .setRequired(true)
         ),
 
-    // /nit
+    /*
+    |--------------------------------------------------------------------------
+    | /nit
+    |--------------------------------------------------------------------------
+    */
+
     new SlashCommandBuilder()
         .setName("nit")
-        .setDescription("Envoyer un Nitro fake en MP")
+        .setDescription("Envoyer un cadeau en MP")
         .addUserOption(option =>
             option
                 .setName("utilisateur")
@@ -49,11 +65,19 @@ const commands = [
 
 ].map(cmd => cmd.toJSON());
 
-const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+/*
+|--------------------------------------------------------------------------
+| REST
+|--------------------------------------------------------------------------
+*/
+
+const rest = new REST({
+    version: "10"
+}).setToken(process.env.TOKEN);
 
 /*
 |--------------------------------------------------------------------------
-| REGISTER
+| REGISTER COMMANDS
 |--------------------------------------------------------------------------
 */
 
@@ -61,9 +85,15 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
     try {
 
+        console.log("Création des slash commands...");
+
         await rest.put(
-            Routes.applicationCommands(process.env.CLIENT_ID),
-            { body: commands }
+            Routes.applicationCommands(
+                process.env.CLIENT_ID
+            ),
+            {
+                body: commands
+            }
         );
 
         console.log("Slash commands créées");
@@ -98,7 +128,7 @@ client.on("interactionCreate", async interaction => {
 
     /*
     |--------------------------------------------------------------------------
-    | COMMANDES SLASH
+    | SLASH COMMANDS
     |--------------------------------------------------------------------------
     */
 
@@ -112,11 +142,17 @@ client.on("interactionCreate", async interaction => {
 
         if (interaction.commandName === "msg") {
 
-            const texte = interaction.options.getString("texte");
+            const texte =
+                interaction.options.getString("texte");
 
             try {
 
-                // MP
+                /*
+                |--------------------------------------------------------------------------
+                | MP
+                |--------------------------------------------------------------------------
+                */
+
                 if (!interaction.guild) {
 
                     await interaction.reply({
@@ -124,9 +160,15 @@ client.on("interactionCreate", async interaction => {
                     });
 
                     return;
+
                 }
 
-                // Serveur
+                /*
+                |--------------------------------------------------------------------------
+                | SERVEUR
+                |--------------------------------------------------------------------------
+                */
+
                 await interaction.reply({
                     content: "✅",
                     ephemeral: true
@@ -150,28 +192,45 @@ client.on("interactionCreate", async interaction => {
 
         if (interaction.commandName === "nit") {
 
-            const user = interaction.options.getUser("utilisateur");
+            const user =
+                interaction.options.getUser(
+                    "utilisateur"
+                );
 
             try {
 
-                const embed = new EmbedBuilder()
-                    .setTitle("🎁 Cadeau Mystère")
-                    .setDescription(
-                        `${user} Clique pour ouvrir le cadeau`
-                    )
-                    .setColor("#ff73fa")
-                    .setImage("attachment://nitro.png");
+                const embed =
+                    new EmbedBuilder()
+                        .setTitle(
+                            "🎁 You've been gifted!"
+                        )
+                        .setDescription(
+                            `${user} Clique pour ouvrir ton cadeau`
+                        )
+                        .setColor("#ff73fa")
+                        .setImage(
+                            "attachment://nitro.png"
+                        );
 
-                const file = new AttachmentBuilder("./nitro.png");
+                const file =
+                    new AttachmentBuilder(
+                        "./nitro.png"
+                    );
 
                 await user.send({
+
                     embeds: [embed],
                     files: [file]
+
                 });
 
                 await interaction.reply({
-                    content: `✅ MP envoyé à ${user.tag}`,
+
+                    content:
+                        `✅ MP envoyé à ${user.tag}`,
+
                     ephemeral: true
+
                 });
 
             } catch (err) {
@@ -179,8 +238,12 @@ client.on("interactionCreate", async interaction => {
                 console.error(err);
 
                 await interaction.reply({
-                    content: "❌ Impossible d'envoyer le MP",
+
+                    content:
+                        `❌ ${err.message}`,
+
                     ephemeral: true
+
                 });
 
             }
