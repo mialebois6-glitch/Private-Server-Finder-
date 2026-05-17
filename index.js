@@ -1,12 +1,12 @@
 const {
     Client,
     GatewayIntentBits,
-    SlashCommandBuilder,
     REST,
-    Routes
-} = require('discord.js');
+    Routes,
+    SlashCommandBuilder
+} = require("discord.js");
 
-require('dotenv').config();
+require("dotenv").config();
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds]
@@ -14,53 +14,50 @@ const client = new Client({
 
 const commands = [
     new SlashCommandBuilder()
-        .setName('msg')
-        .setDescription('Envoyer un message')
+        .setName("msg")
+        .setDescription("Envoyer un message")
         .addStringOption(option =>
             option
-                .setName('texte')
-                .setDescription('Le message à envoyer')
+                .setName("texte")
+                .setDescription("Le message")
                 .setRequired(true)
         )
 ].map(command => command.toJSON());
 
-const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
 (async () => {
     try {
-        console.log('Commande en cours de création...');
+
+        console.log("Création des commandes...");
 
         await rest.put(
             Routes.applicationCommands(process.env.CLIENT_ID),
             { body: commands }
         );
 
-        console.log('Commande créée.');
+        console.log("Commandes créées.");
+
     } catch (error) {
         console.error(error);
     }
 })();
 
-client.once('ready', () => {
-    console.log(`Connecté en tant que ${client.user.tag}`);
+client.on("ready", () => {
+    console.log(`${client.user.tag} connecté`);
 });
 
-client.on('interactionCreate', async interaction => {
+client.on("interactionCreate", async interaction => {
 
     if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName === 'msg') {
+    if (interaction.commandName === "msg") {
 
-        const texte = interaction.options.getString('texte');
+        const texte = interaction.options.getString("texte");
 
-        // Réponse invisible
         await interaction.reply({
-            content: 'Message envoyé',
-            ephemeral: true
+            content: texte
         });
-
-        // Envoie le message
-        await interaction.channel.send(texte);
     }
 });
 
