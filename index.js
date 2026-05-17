@@ -15,41 +15,68 @@ const client = new Client({
     ]
 });
 
+/*
+|--------------------------------------------------------------------------
+| Slash Commands
+|--------------------------------------------------------------------------
+*/
+
 const commands = [
     new SlashCommandBuilder()
         .setName("msg")
-        .setDescription("Envoyer un message")
+        .setDescription("Envoyer un message invisible")
         .addStringOption(option =>
             option
                 .setName("texte")
                 .setDescription("Le message à envoyer")
                 .setRequired(true)
         )
-].map(command => command.toJSON());
+].map(cmd => cmd.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
+/*
+|--------------------------------------------------------------------------
+| Register Commands
+|--------------------------------------------------------------------------
+*/
+
 (async () => {
+
     try {
 
-        console.log("Création des commandes...");
+        console.log("Création des slash commands...");
 
-        // Commande globale
         await rest.put(
             Routes.applicationCommands(process.env.CLIENT_ID),
             { body: commands }
         );
 
-        console.log("Commandes créées.");
+        console.log("Slash commands créées.");
 
-    } catch (error) {
-        console.error(error);
+    } catch (err) {
+        console.error(err);
     }
+
 })();
 
+/*
+|--------------------------------------------------------------------------
+| Ready
+|--------------------------------------------------------------------------
+*/
+
 client.once("ready", () => {
+
     console.log(`${client.user.tag} connecté`);
+
 });
+
+/*
+|--------------------------------------------------------------------------
+| Interaction
+|--------------------------------------------------------------------------
+*/
 
 client.on("interactionCreate", async interaction => {
 
@@ -59,15 +86,31 @@ client.on("interactionCreate", async interaction => {
 
         const texte = interaction.options.getString("texte");
 
-        // Réponse invisible
-        await interaction.reply({
-            content: "Message envoyé",
-            ephemeral: true
-        });
+        try {
 
-        // Envoie dans le salon ou en MP
-        await interaction.channel.send(texte);
+            // Réponse invisible
+            await interaction.reply({
+                content: "✅ Message envoyé",
+                ephemeral: true
+            });
+
+            // Message visible
+            await interaction.followUp({
+                content: texte
+            });
+
+        } catch (err) {
+
+            console.error(err);
+
+        }
     }
 });
+
+/*
+|--------------------------------------------------------------------------
+| Login
+|--------------------------------------------------------------------------
+*/
 
 client.login(process.env.TOKEN);
