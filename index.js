@@ -3,65 +3,85 @@ require("dotenv").config();
 const {
     Client,
     GatewayIntentBits,
-    EmbedBuilder
+    EmbedBuilder,
+    SlashCommandBuilder,
+    REST,
+    Routes
 } = require("discord.js");
 
 const axios = require("axios");
 const cheerio = require("cheerio");
+const fs = require("fs");
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds]
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.DirectMessages
+    ]
 });
 
 const TOKEN = process.env.TOKEN;
-const USER_ID = process.env.USER_ID;
+const CLIENT_ID = process.env.CLIENT_ID;
 
-let messageId = null;
-let oldStock = "";
+const CONFIG_FILE = "./users.json";
 
-// Emojis fruits
+let users = {};
+
+if (fs.existsSync(CONFIG_FILE)) {
+    users = JSON.parse(fs.readFileSync(CONFIG_FILE));
+}
+
+// emojis
 const fruitEmojis = {
-    Rocket: "🚀",
-    Spin: "🌀",
-    Chop: "🔪",
-    Spring: "🌸",
-    Bomb: "💣",
-    Smoke: "💨",
-    Spike: "📌",
-    Flame: "🔥",
-    Falcon: "🦅",
-    Ice: "❄️",
-    Sand: "🏜️",
-    Dark: "🌑",
-    Diamond: "💎",
-    Light: "💡",
-    Rubber: "🧤",
-    Barrier: "🛡️",
-    Ghost: "👻",
-    Magma: "🌋",
-    Quake: "🌎",
+    Dragon: "🐉",
+    Kitsune: "🦊",
+    Leopard: "🐆",
+    Dough: "🍩",
+    Spirit: "👹",
+    Venom: "☠️",
     Buddha: "🟡",
-    Love: "💖",
-    Spider: "🕷️",
-    Sound: "🎵",
-    Phoenix: "🦜",
     Portal: "🌀",
     Rumble: "⚡",
-    Pain: "😖",
-    Blizzard: "🌨️",
-    Gravity: "🌌",
-    Mammoth: "🦣",
-    "T-Rex": "🦖",
-    Dough: "🍩",
-    Shadow: "🌑",
-    Venom: "☠️",
-    Control: "🎮",
-    Spirit: "👹",
-    Leopard: "🐆",
-    Dragon: "🐉",
-    Kitsune: "🦊"
+    Flame: "🔥"
 };
 
+// save config
+function saveUsers() {
+    fs.writeFileSync(
+        CONFIG_FILE,
+        JSON.stringify(users, null, 2)
+    );
+}
+
+// slash command
+const commands = [
+    new SlashCommandBuilder()
+        .setName("apply")
+        .setDescription("Configure ton stock bot")
+        .toJSON()
+];
+
+const rest = new REST({ version: "10" })
+    .setToken(TOKEN);
+
+(async () => {
+
+    try {
+
+        await rest.put(
+            Routes.applicationCommands(CLIENT_ID),
+            { body: commands }
+        );
+
+        console.log("Slash command chargé");
+
+    } catch (err) {
+
+        console.log(err);
+    }
+})();
+
+// récupération stock
 async function getStock() {
 
     try {
@@ -92,103 +112,187 @@ async function getStock() {
 
         return fruits;
 
-    } catch (err) {
+    } catch {
 
-        console.log("Erreur :", err.message);
         return [];
     }
 }
 
-function formatStock(fruits) {
+// slash command interaction
+client.on("interactionCreate", async interaction => {
 
-    return fruits.map(fruit => {
+    if (!interaction.isChatInputCommand()) return;
 
-        const emoji = fruitEmojis[fruit] || "🍎";
+    if (interaction.commandName === "apply") {
 
-        return `${emoji} ${fruit}`;
+        users[interaction.user.id] = {
+            fruits: [],
+            pingStock: true
+        };
 
-    }).join("\n");
-}
+        saveUsers();
 
+        await interaction.reply({
+            content: "📩 Regarde tes MP.",
+            ephemeral: true
+        });
+
+        const dm = await interaction.user.createDM();
+
+        await dm.send(
+`🍎 CONFIGURATION BLOX FRUIT
+
+Envoie les fruits que tu veux surveiller.
+
+Exemple :
+Dragon,Kitsune,Leopard
+
+Tape :
+all
+pour tous les fruits.`
+        );
+
+        const filter = m => m.author.id === interaction.user.id;
+
+        const collector = dm.createMessageCollector({
+            filter,
+            time: 60000,
+            max: 1
+        });
+
+        collector.on("collect", async msg => {
+
+            let fruits = [];
+
+            if (
+                msg.content.toLowerCase() === "all"
+            ) {
+
+                fruits = ["all"];
+
+            } else {
+
+                fruits = msg.content
+                    .split(",")
+                    .map(f => f.trim());
+            }
+
+            users[interaction.user.id].fruits =
+                fruits;
+
+            await dm.send(
+`🔔 Veux-tu être ping quand il y a du stock ?
+
+Répond :
+oui
+ou
+non`
+            );
+
+            saveUsers();
+
+            const collector2 =
+                dm.createMessageCollector({
+                    filter,
+                    time: 60000,
+                    max: 1
+                });
+
+            collector2.on(
+                "collect",
+                async msg2 => {
+
+                    users[
+                        interaction.user.id
+                    ].pingStock =
+                        msg2.content.toLowerCase() ===
+                        "oui";
+
+                    saveUsers();
+
+                    await dm.send(
+                        "✅ Configuration terminée."
+                    );
+                }
+            );
+        });
+    }
+});
+
+// update stock
 async function updateStock() {
 
     const fruits = await getStock();
 
     if (!fruits.length) return;
 
-    const stockText = formatStock(fruits);
+    for (const userId in users) {
 
-    // évite les updates inutiles
-    if (stockText === oldStock) return;
+        const config = users[userId];
 
-    oldStock = stockText;
+        const user =
+            await client.users.fetch(userId);
 
-    const user = await client.users.fetch(USER_ID);
+        let detected = [];
 
-    const channel = await user.createDM();
+        if (
+            config.fruits.includes("all")
+        ) {
 
-    // notification fruits rares
-    let notif = "";
+            detected = fruits;
 
-    if (fruits.includes("Dragon")) {
-        notif += "🐉 DRAGON EN STOCK !\n";
-    }
+        } else {
 
-    if (fruits.includes("Kitsune")) {
-        notif += "🦊 KITSUNE EN STOCK !";
-    }
-
-    const embed = new EmbedBuilder()
-        .setColor("#2b2d31")
-        .setTitle("🍎 FruityBlox • Live Stock")
-        .setDescription(stockText)
-        .setFooter({
-            text: "Updates every 5 minutes"
-        })
-        .setTimestamp();
-
-    // update du même message
-    if (messageId) {
-
-        try {
-
-            const msg = await channel.messages.fetch(messageId);
-
-            await msg.edit({
-                content: notif,
-                embeds: [embed]
-            });
-
-        } catch {
-
-            const newMsg = await channel.send({
-                content: notif,
-                embeds: [embed]
-            });
-
-            messageId = newMsg.id;
+            detected = fruits.filter(f =>
+                config.fruits.includes(f)
+            );
         }
 
-    } else {
+        if (!detected.length) continue;
 
-        const newMsg = await channel.send({
-            content: notif,
+        const stockText = detected
+            .map(f => {
+
+                const emoji =
+                    fruitEmojis[f] || "🍎";
+
+                return `${emoji} ${f}`;
+            })
+            .join("\n");
+
+        const embed = new EmbedBuilder()
+            .setColor("#2b2d31")
+            .setTitle(
+                "🍎 FruityBlox Stock Alert"
+            )
+            .setDescription(stockText)
+            .setFooter({
+                text: "Live stock"
+            })
+            .setTimestamp();
+
+        let content = "";
+
+        if (config.pingStock) {
+            content =
+                "🚨 Fruit disponible !";
+        }
+
+        await user.send({
+            content,
             embeds: [embed]
         });
-
-        messageId = newMsg.id;
     }
-
-    console.log("Stock mis à jour !");
 }
 
 client.once("ready", async () => {
 
-    console.log(`${client.user.tag} connecté !`);
+    console.log(
+        `${client.user.tag} connecté`
+    );
 
-    await updateStock();
+    updateStock();
 
-    // refresh toutes les 5 min
     setInterval(updateStock, 300000);
 });
 
