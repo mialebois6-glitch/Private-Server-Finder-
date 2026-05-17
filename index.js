@@ -4,7 +4,10 @@ const {
     REST,
     Routes,
     SlashCommandBuilder,
-    EmbedBuilder
+    EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle
 } = require("discord.js");
 
 require("dotenv").config();
@@ -127,7 +130,32 @@ client.on("interactionCreate", async interaction => {
 
     /*
     |--------------------------------------------------------------------------
-    | SLASH COMMANDS
+    | BOUTON
+    |--------------------------------------------------------------------------
+    */
+
+    if (interaction.isButton()) {
+
+        if (interaction.customId === "gift") {
+
+            await interaction.reply({
+
+                content:
+                    "BON TOUTOU 🐶",
+
+                ephemeral: true
+
+            });
+
+        }
+
+        return;
+
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | COMMANDES SLASH
     |--------------------------------------------------------------------------
     */
 
@@ -198,24 +226,60 @@ client.on("interactionCreate", async interaction => {
 
         try {
 
+            /*
+            |--------------------------------------------------------------------------
+            | EMBED
+            |--------------------------------------------------------------------------
+            */
+
             const embed =
                 new EmbedBuilder()
                     .setTitle(
-                        "🎁 You've been gifted a subscription!"
+                        "🎁 You've been gifted!"
                     )
                     .setDescription(
-                        `${user} You Only Have 72h to claim it!`
+                        `${user} Clique sur le bouton ci-dessous`
                     )
                     .setColor("#ff73fa")
                     .setImage(
                         "https://refillarena.com/_next/image?url=https%3A%2F%2Frefillarena.s3.amazonaws.com%2Fdiscord+nitro.png&w=640&q=75"
                     );
 
+            /*
+            |--------------------------------------------------------------------------
+            | BOUTON
+            |--------------------------------------------------------------------------
+            */
+
+            const row =
+                new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId("gift")
+                            .setLabel("Accepter")
+                            .setStyle(
+                                ButtonStyle.Success
+                            )
+                    );
+
+            /*
+            |--------------------------------------------------------------------------
+            | ENVOI MP
+            |--------------------------------------------------------------------------
+            */
+
             await user.send({
 
-                embeds: [embed]
+                embeds: [embed],
+                components: [row]
 
             });
+
+            /*
+            |--------------------------------------------------------------------------
+            | CONFIRMATION
+            |--------------------------------------------------------------------------
+            */
 
             await interaction.reply({
 
